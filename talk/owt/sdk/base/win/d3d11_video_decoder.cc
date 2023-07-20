@@ -5,6 +5,8 @@
 #include "talk/owt/sdk/base/win/d3d11_video_decoder.h"
 #include <algorithm>
 #include <limits>
+#include <string>
+#include <windows.h>
 
 #include "system_wrappers/include/metrics.h"
 #include "talk/owt/sdk/base/mediautils.h"
@@ -16,6 +18,52 @@
 #include "webrtc/rtc_base/checks.h"
 #include "webrtc/rtc_base/logging.h"
 #include "webrtc/system_wrappers/include/clock.h"
+
+namespace ga {
+  void WriteToDebugLog(const char *format_string, ...)
+  {
+    std::string logMsg = "";
+
+    if (format_string == NULL) {
+      return;
+    }
+
+    // Construct the formatted source message
+    char buffer[1024];
+    va_list args;
+    va_start(args, format_string);
+    vsnprintf(buffer, 1024, format_string, args);
+    va_end(args);
+
+    logMsg += std::string(buffer);
+
+    FILE* destFile = NULL;
+    errno_t file_error = 0;
+
+    char fileName[64];
+    int nameLength = 0;
+    nameLength = snprintf(fileName, sizeof(fileName), "%s%d%s",
+      "C:\\Temp\\OWTDebug_", GetCurrentThreadId(), ".txt");
+    if (nameLength < 0 || nameLength > sizeof(fileName)) {
+      perror("OWT: Error generating debug file name.");
+    }
+
+    file_error = fopen_s(&destFile, fileName, "a+");
+    if (file_error) {
+      perror("OWT: Error opening debug file.");
+      return;
+    }
+
+    if (destFile != NULL) {
+      fprintf(destFile, "%s", logMsg.c_str());
+    }
+
+    if (destFile != NULL) {
+        fclose(destFile);
+    }
+    return;
+  }
+}
 
 namespace owt {
 namespace base {
@@ -394,21 +442,26 @@ int64_t D3D11VideoDecoder::GetSideData(const uint8_t* frame_data,
                                          size_t frame_size,
                                          std::vector<uint8_t>& side_data,
                                          std::vector<uint8_t>& cursor_data) {
+  ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
   side_data.clear();
   if (frame_size < 24)  // with prefix-frame-num sei, frame size needs to be at
                         // least 24 bytes.
     return -1;
+  ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
 
   const uint8_t* head = frame_data;
   unsigned int payload_size = 0;
-
+  ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
   if (head[0] != 0 || head[1] != 0 || head[2] != 0 || head[3] != 1) {
     return -1;
   }
+  ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
 
   if (settings_.codec_type() == webrtc::kVideoCodecH264 &&
       (head[4] & 0x1f) == 0x06) {
+    ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
     if (head[5] == 0x05) { // user data unregistered.
+      ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
       payload_size = head[6];
       if (payload_size > frame_size - 4 - 4 || payload_size < 17) //. 4-byte start code + 4 byte NAL HDR/Payload Type/Size/RBSP
         return -1;
@@ -417,21 +470,25 @@ int64_t D3D11VideoDecoder::GetSideData(const uint8_t* frame_data,
           return -1;
         }
       }
+      ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
       // Read the entire side-data payload
       for (unsigned int i = 0; i < payload_size - 16; i++)
         side_data.push_back(head[i + 23]);
-
+      ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
       // Proceed with cursor data SEI, if any.
       unsigned int sei_idx = 23 + payload_size - 16;
       if (head[sei_idx] != 0x05) {
+        ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
         return payload_size;
       } else {
+        ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
         sei_idx++;
         unsigned int cursor_data_size = 0;
         while (head[sei_idx] == 0xFF) {
           cursor_data_size += head[sei_idx];
           sei_idx++;
         }
+        ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
         cursor_data_size += head[sei_idx];
         cursor_data_size -= 16;
         sei_idx++;
@@ -442,40 +499,49 @@ int64_t D3D11VideoDecoder::GetSideData(const uint8_t* frame_data,
           }
           sei_idx++;
         }
+        ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
 
         if (cursor_data_size > 0) {
           if (!cursor_data.empty()) {
             cursor_data.clear();
           }
+          ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
           cursor_data.insert(cursor_data.end(), head + sei_idx,
                              head + sei_idx + cursor_data_size);
         }
       }
+      ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
       return payload_size;
     }
   } else if (settings_.codec_type() == webrtc::kVideoCodecH265 &&
              (head[4] & 0x7E) >> 1 == 0x27 && frame_size >= 25) {
+    ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
     // skip byte #5 and check byte #6
     if (head[6] == 0x05) {
+      ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
       payload_size = head[7];
       if (payload_size > frame_size - 4 - 5 ||
           payload_size < 17) {  // 4-byte start code + 5 byte NAL HDR/Payload
                                 // Type/Size/RBSP
-        RTC_LOG(LS_INFO) << "Invalid payload size.";
+        ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
         return -1;
       }
+      ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
       for (int i = 8; i < 24; i++) {
         if (head[i] != frame_number_sei_guid[i - 8]) {
           return -1;
         }
       }
+      ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
       // Read the entire side-data payload
       for (unsigned int i = 0; i < payload_size - 16; i++)
         side_data.push_back(head[i + 24]);
-
+      ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
       // Proceed with cursor data SEI, if any.
       unsigned int sei_idx = 24 + payload_size - 16;
+      ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
       if (head[sei_idx] != 0x05) {
+        ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
         return payload_size;
       } else {
         sei_idx++;
@@ -484,16 +550,18 @@ int64_t D3D11VideoDecoder::GetSideData(const uint8_t* frame_data,
           cursor_data_size += head[sei_idx];
           sei_idx++;
         }
+        ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
         cursor_data_size += head[sei_idx];
         cursor_data_size -= 16;
         sei_idx++;
-
+        ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
         for (int i = 0; i < 16; i++) {
           if (head[sei_idx] != cursor_data_sei_guid[i]) {
             return -1;
           }
           sei_idx++;
         }
+        ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
 
         if (cursor_data_size > 0) {
           if (!cursor_data.empty()) {
@@ -503,9 +571,12 @@ int64_t D3D11VideoDecoder::GetSideData(const uint8_t* frame_data,
                              head + sei_idx + cursor_data_size);
         }
       }
+      ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
       return payload_size;
     }
+    ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
   }
+  ga::WriteToDebugLog("OWT:%s:%d:\n", __FUNCTION__, __LINE__);
   return payload_size;
 }
 
