@@ -47,7 +47,7 @@ vars = {
   # chromium waterfalls. More info at: crbug.com/570091.
   'checkout_configuration': 'default',
   'checkout_instrumented_libraries': 'checkout_linux and checkout_configuration == "default"',
-  'deps_owt_git': 'https://github.com/open-webrtc-toolkit',
+  'deps_owt_git': 'https://github.com/tannervoas742',
   'chromium_revision': 'f8d62f3cb78e2561e03012256719cfc98a35ab55',
 
   # Keep the Chromium default of generating location tags.
@@ -98,7 +98,7 @@ deps = {
     Var('chromium_git') + '/chromium/src/third_party' + '@' + 'cd30703e732f3436f72f63c13f16ebb19803ddd6',
   # WebRTC-only dependencies (not present in Chromium).
   'src/third_party/webrtc':
-    Var('deps_owt_git') + '/owt-deps-webrtc' + '@' + 'd0f5ba80c700b52262d08ff6b6e3b63650552387',
+    Var('deps_owt_git') + '/owt-deps-webrtc' + '@' + '702d566574c0dbc958644e87482aec74c9a0225c',
   # Gradle 4.3-rc4. Used for testing Android Studio project generation for WebRTC.
   'src/third_party/webrtc/examples/androidtests/third_party/gradle': {
     'url': Var('chromium_git') + '/external/github.com/gradle/gradle.git' + '@' +
